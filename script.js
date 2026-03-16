@@ -1,9 +1,6 @@
 const cameraButton = document.getElementById("cameraButton")
 const cameraInput = document.getElementById("cameraInput")
 const preview = document.getElementById("preview")
-const SUPABASE_URL = "https://fixpfxxlnuhwzvbgcykm.supabase.co"
-
-const SUPABASE_KEY = "sb_publishable_9SUF0gKkr4337Ai9i4kCrg_pSaW2sSI"
 
 const supabase = window.supabase.createClient(
     SUPABASE_URL,
