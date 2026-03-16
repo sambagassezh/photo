@@ -1,167 +1,153 @@
-// Wait for page to load before running anything
-window.onload = () => {
-
-const SUPABASE_URL = "https://fixpfxlnuhwzvbgcykm.supabase.co"
-const SUPABASE_KEY = "PASTE_YOUR_PUBLISHABLE_KEY"
-
-const supabase = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-)
-
-// Elements
 const cameraButton = document.getElementById("cameraButton")
 const cameraInput = document.getElementById("cameraInput")
+const preview = document.getElementById("preview")
 
-const canvas = document.getElementById("canvas")
-const ctx = canvas.getContext("2d")
+const SAMBA_COLORS = [
+[252,15,35],
+[34,34,215],
+[252,222,70]
+]
 
-const previewContainer = document.getElementById("previewContainer")
-const sendButton = document.getElementById("sendButton")
-
-let originalImage = null
-let currentEffect = "none"
-
-// Open camera
 cameraButton.addEventListener("click", () => {
-    cameraInput.click()
+cameraInput.click()
 })
 
-// When user takes picture
 cameraInput.addEventListener("change", (event) => {
 
-    const file = event.target.files[0]
-    if (!file) return
+const file = event.target.files[0]
+if (!file) return
 
-    const reader = new FileReader()
+const reader = new FileReader()
 
-    reader.onload = function(e){
+reader.onload = function(e){
 
-        const img = new Image()
+const img = new Image()
 
-        img.onload = function(){
+img.onload = function(){
 
-            const MAX = 800
+const canvas = processImage(img)
 
-            let w = img.width
-            let h = img.height
+sobelEdgeDetect(canvas)
 
-            // Resize large images
-            if(w > h && w > MAX){
-                h = h * MAX / w
-                w = MAX
-            }
-            else if(h > MAX){
-                w = w * MAX / h
-                h = MAX
-            }
+colorEdges(canvas)
 
-            canvas.width = w
-            canvas.height = h
-
-            ctx.drawImage(img,0,0,w,h)
-
-            // Store original pixels for effects
-            originalImage = ctx.getImageData(0,0,w,h)
-
-            previewContainer.style.display = "block"
-
-        }
-
-        img.src = e.target.result
-
-    }
-
-    reader.readAsDataURL(file)
-
-})
-
-
-// Effect selection
-window.applyEffect = function(effect){
-
-    if(!originalImage) return
-
-    currentEffect = effect
-
-    const imgData = new ImageData(
-        new Uint8ClampedArray(originalImage.data),
-        originalImage.width,
-        originalImage.height
-    )
-
-    const data = imgData.data
-
-    if(effect === "cool"){
-        for(let i=0;i<data.length;i+=4){
-            data[i+2] = Math.min(255,data[i+2] + 40)
-        }
-    }
-
-    if(effect === "warm"){
-        for(let i=0;i<data.length;i+=4){
-            data[i] = Math.min(255,data[i] + 40)
-        }
-    }
-
-    if(effect === "edges"){
-
-        const colors = [
-            [252,15,35],
-            [34,34,215],
-            [252,222,70]
-        ]
-
-        for(let i=0;i<data.length;i+=4){
-
-            const gray = (data[i]+data[i+1]+data[i+2])/3
-
-            if(gray > 120){
-
-                const c = colors[Math.floor(Math.random()*colors.length)]
-
-                data[i] = c[0]
-                data[i+1] = c[1]
-                data[i+2] = c[2]
-
-            }else{
-
-                data[i]=0
-                data[i+1]=0
-                data[i+2]=0
-
-            }
-
-        }
-
-    }
-
-    ctx.putImageData(imgData,0,0)
+preview.src = canvas.toDataURL("image/jpeg",0.7)
 
 }
 
+img.src = e.target.result
+}
 
-// Upload to Supabase
-sendButton.addEventListener("click", async () => {
-
-    canvas.toBlob(async (blob)=>{
-
-        const filename = `photo_${Date.now()}.jpg`
-
-        const { error } = await supabase.storage
-        .from("photos")
-        .upload(filename, blob)
-
-        if(error){
-            console.error(error)
-            alert("Upload failed")
-            return
-        }
-
-        alert("Photo sent!")
-
-    },"image/jpeg",0.7)
+reader.readAsDataURL(file)
 
 })
 
+function processImage(img){
+
+const canvas = document.createElement("canvas")
+const ctx = canvas.getContext("2d")
+
+const MAX_SIZE = 800
+
+let w = img.width
+let h = img.height
+
+if(w > h && w > MAX_SIZE){
+h = h * MAX_SIZE / w
+w = MAX_SIZE
+}
+else if(h > MAX_SIZE){
+w = w * MAX_SIZE / h
+h = MAX_SIZE
+}
+
+canvas.width = w
+canvas.height = h
+
+ctx.drawImage(img,0,0,w,h)
+
+return canvas
+}
+
+function sobelEdgeDetect(canvas){
+
+const ctx = canvas.getContext("2d")
+const imgData = ctx.getImageData(0,0,canvas.width,canvas.height)
+
+const data = imgData.data
+const w = canvas.width
+const h = canvas.height
+
+const gray = new Float32Array(w*h)
+
+for(let i=0;i<data.length;i+=4){
+const r=data[i]
+const g=data[i+1]
+const b=data[i+2]
+gray[i/4]=(r+g+b)/3
+}
+
+const output = new Float32Array(w*h)
+
+for(let y=1;y<h-1;y++){
+for(let x=1;x<w-1;x++){
+
+const i = y*w+x
+
+const gx =
+-gray[(y-1)*w+(x-1)] -2*gray[y*w+(x-1)] -gray[(y+1)*w+(x-1)]
++gray[(y-1)*w+(x+1)] +2*gray[y*w+(x+1)] +gray[(y+1)*w+(x+1)]
+
+const gy =
+-gray[(y-1)*w+(x-1)] -2*gray[(y-1)*w+x] -gray[(y-1)*w+(x+1)]
++gray[(y+1)*w+(x-1)] +2*gray[(y+1)*w+x] +gray[(y+1)*w+(x+1)]
+
+output[i]=Math.sqrt(gx*gx+gy*gy)
+
+}
+}
+
+for(let i=0;i<data.length;i+=4){
+
+const val = output[i/4]
+
+data[i]=val
+data[i+1]=val
+data[i+2]=val
+
+}
+
+ctx.putImageData(imgData,0,0)
+}
+
+function colorEdges(canvas){
+
+const ctx = canvas.getContext("2d")
+const imgData = ctx.getImageData(0,0,canvas.width,canvas.height)
+
+const data = imgData.data
+
+for(let i=0;i<data.length;i+=4){
+
+const brightness = data[i]
+
+if(brightness > 80){
+
+const c = SAMBA_COLORS[Math.floor(Math.random()*SAMBA_COLORS.length)]
+
+data[i]=c[0]
+data[i+1]=c[1]
+data[i+2]=c[2]
+
+}else{
+
+data[i]=0
+data[i+1]=0
+data[i+2]=0
+
+}
+
+}
+
+ctx.putImageData(imgData,0,0)
 }
