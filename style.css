@@ -1,37 +1,21 @@
 /* Updated styles for effect buttons, preview area, and send button */
-
-.effect-button {
-    padding: 10px 15px;
-    border: none;
-    background-color: #3498db;
-    color: white;
-    font-size: 16px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-.effect-button:hover {
-    background-color: #2980b9;
+body{
+font-family:sans-serif;
+text-align:center;
+background:#f5ecdc;
 }
 
-.preview-area {
-    border: 2px dashed #3498db;
-    padding: 20px;
-    margin: 20px 0;
-    min-height: 150px;
-    text-align: center;
+button{
+padding:15px;
+font-size:18px;
+margin:10px;
+border:none;
+border-radius:8px;
+background:#e63946;
+color:white;
 }
 
-.send-button {
-    padding: 10px 30px;
-    border: none;
-    background-color: #2ecc71;
-    color: white;
-    font-size: 18px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-.send-button:hover {
-    background-color: #27ae60;
+canvas{
+max-width:90%;
+margin-top:20px;
 }
