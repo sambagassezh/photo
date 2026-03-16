@@ -64,7 +64,7 @@ cameraInput.addEventListener("change", (event)=>{
     reader.readAsDataURL(file)
 
 })
-
+console.log("JS loaded")
 
 function applyEffect(effect){
 
