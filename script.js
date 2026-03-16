@@ -1,7 +1,14 @@
 const cameraButton = document.getElementById("cameraButton")
 const cameraInput = document.getElementById("cameraInput")
 const preview = document.getElementById("preview")
+const SUPABASE_URL = "https://fixpfxlnuhwzvbgcykm.supabase.co"
 
+const SUPABASE_KEY = "PASTE_YOUR_PUBLISHABLE_KEY_HERE"
+
+const supabase = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+)
 const SAMBA_COLORS = [
     [252,15,35],   // red
     [34,34,215],   // blue
