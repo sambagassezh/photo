@@ -1,33 +1,27 @@
 <!DOCTYPE html>
-<html>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sambagasse Photo</title>
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Effects</title>
 </head>
-
 <body>
-
-<h1>Sambagasse</h1>
-
-<button id="cameraButton">
-📸 Take a picture
-</button>
-
-<input 
-    type="file" 
-    id="cameraInput" 
-    accept="image/*" 
-    capture="environment"
-    style="display:none"
-/>
-
-<div id="previewContainer">
-    <img id="preview">
-</div>
-
-<script src="script.js"></script>
-
+    <h1>Photo Effects</h1>
+    <div id="timestamp">Timestamp: 2026-03-16 20:56:55</div>
+    <div id="previewContainer">
+        <img id="previewImage" src="your-image-source.jpg" alt="Preview" style="width: 100%; height: auto;" />
+    </div>
+    <div id="effectButtons">
+        <button onclick="applyEffect('effect1')">Effect 1</button>
+        <button onclick="applyEffect('effect2')">Effect 2</button>
+        <button onclick="applyEffect('effect3')">Effect 3</button>
+    </div>
+    <button id="sendButton">Send</button>
+    <script>
+        function applyEffect(effectName) {
+            // Logic to apply the effect to the preview image
+            console.log('Applying ' + effectName);
+        }
+    </script>
 </body>
 </html>
