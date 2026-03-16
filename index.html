@@ -12,7 +12,26 @@
 <button id="cameraButton">
 📸 Take a picture
 </button>
+<div id="lastCommit" aria-live="polite">Last commit time: fetching…</div>
+<script>
+(async () => {
+    const el = document.getElementById('lastCommit');
+    function show(text){ el.textContent = 'Last commit time: ' + text; }
 
+    try {
+        const resp = await fetch(location.href, { cache: 'no-store' });
+        const lm = resp.headers.get('last-modified') || document.lastModified;
+        if (lm) {
+            const d = new Date(lm);
+            show(isNaN(d.getTime()) ? lm : d.toLocaleString());
+        } else {
+            show('unknown');
+        }
+    } catch (err) {
+        show(document.lastModified || 'unknown');
+    }
+})();
+</script>
 <input 
     type="file" 
     id="cameraInput" 
@@ -24,7 +43,19 @@
 <div id="previewContainer">
     <img id="preview">
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="script.js"></script>
+<div id="effects">
+    <p>Choose your style</p>
 
+    <button class="effectBtn" data-effect="sobel">Edge Samba</button>
+    <button class="effectBtn" data-effect="invert">Invert</button>
+    <button class="effectBtn" data-effect="poster">Poster</button>
+    <button class="effectBtn" data-effect="none">Clean</button>
+</div>
+
+<button id="sendButton">
+🔥 Send to the wall!
+</button>
 </body>
 </html>
