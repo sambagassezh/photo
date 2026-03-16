@@ -1,3 +1,6 @@
+// Wait for page to load before running anything
+window.onload = () => {
+
 const SUPABASE_URL = "https://fixpfxlnuhwzvbgcykm.supabase.co"
 const SUPABASE_KEY = "PASTE_YOUR_PUBLISHABLE_KEY"
 
@@ -6,8 +9,10 @@ const supabase = window.supabase.createClient(
     SUPABASE_KEY
 )
 
+// Elements
 const cameraButton = document.getElementById("cameraButton")
 const cameraInput = document.getElementById("cameraInput")
+
 const canvas = document.getElementById("canvas")
 const ctx = canvas.getContext("2d")
 
@@ -17,12 +22,16 @@ const sendButton = document.getElementById("sendButton")
 let originalImage = null
 let currentEffect = "none"
 
-cameraButton.onclick = () => cameraInput.click()
+// Open camera
+cameraButton.addEventListener("click", () => {
+    cameraInput.click()
+})
 
-cameraInput.addEventListener("change", (event)=>{
+// When user takes picture
+cameraInput.addEventListener("change", (event) => {
 
     const file = event.target.files[0]
-    if(!file) return
+    if (!file) return
 
     const reader = new FileReader()
 
@@ -37,6 +46,7 @@ cameraInput.addEventListener("change", (event)=>{
             let w = img.width
             let h = img.height
 
+            // Resize large images
             if(w > h && w > MAX){
                 h = h * MAX / w
                 w = MAX
@@ -51,6 +61,7 @@ cameraInput.addEventListener("change", (event)=>{
 
             ctx.drawImage(img,0,0,w,h)
 
+            // Store original pixels for effects
             originalImage = ctx.getImageData(0,0,w,h)
 
             previewContainer.style.display = "block"
@@ -64,9 +75,12 @@ cameraInput.addEventListener("change", (event)=>{
     reader.readAsDataURL(file)
 
 })
-console.log("JS loaded")
 
-function applyEffect(effect){
+
+// Effect selection
+window.applyEffect = function(effect){
+
+    if(!originalImage) return
 
     currentEffect = effect
 
@@ -80,29 +94,29 @@ function applyEffect(effect){
 
     if(effect === "cool"){
         for(let i=0;i<data.length;i+=4){
-            data[i+2] += 40
+            data[i+2] = Math.min(255,data[i+2] + 40)
         }
     }
 
     if(effect === "warm"){
         for(let i=0;i<data.length;i+=4){
-            data[i] += 40
+            data[i] = Math.min(255,data[i] + 40)
         }
     }
 
     if(effect === "edges"){
+
+        const colors = [
+            [252,15,35],
+            [34,34,215],
+            [252,222,70]
+        ]
 
         for(let i=0;i<data.length;i+=4){
 
             const gray = (data[i]+data[i+1]+data[i+2])/3
 
             if(gray > 120){
-
-                const colors = [
-                    [252,15,35],
-                    [34,34,215],
-                    [252,222,70]
-                ]
 
                 const c = colors[Math.floor(Math.random()*colors.length)]
 
@@ -127,13 +141,14 @@ function applyEffect(effect){
 }
 
 
-sendButton.onclick = async () => {
+// Upload to Supabase
+sendButton.addEventListener("click", async () => {
 
     canvas.toBlob(async (blob)=>{
 
         const filename = `photo_${Date.now()}.jpg`
 
-        const {error} = await supabase.storage
+        const { error } = await supabase.storage
         .from("photos")
         .upload(filename, blob)
 
@@ -146,5 +161,7 @@ sendButton.onclick = async () => {
         alert("Photo sent!")
 
     },"image/jpeg",0.7)
+
+})
 
 }
