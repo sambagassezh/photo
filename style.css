@@ -1,0 +1,23 @@
+body{
+    font-family: sans-serif;
+    text-align:center;
+    background:#f5ecdc;
+}
+
+button{
+    font-size:20px;
+    padding:15px 25px;
+    border:none;
+    background:#e63946;
+    color:white;
+    border-radius:8px;
+}
+
+#previewContainer{
+    margin-top:30px;
+}
+
+#preview{
+    max-width:90%;
+    border-radius:10px;
+}
