@@ -2,20 +2,17 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Sambagasse ZW</title>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
+<title>Sambagasse Photo</title>
 <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<h1>Welcome to Sambagasse at ZW!</h1>
+<h1>Sambagasse</h1>
 
-<button id="cameraButton">📸 Take a picture</button>
+<button id="cameraButton">
+📸 Take a picture
+</button>
 
 <input
 type="file"
@@ -23,23 +20,10 @@ id="cameraInput"
 accept="image/*"
 capture="environment"
 style="display:none"
->
+/>
 
-<div id="previewContainer" style="display:none">
-
-<canvas id="canvas"></canvas>
-
-<div id="effects">
-
-<button onclick="applyEffect('none')">Original</button>
-<button onclick="applyEffect('edges')">Edges</button>
-<button onclick="applyEffect('cool')">Cool</button>
-<button onclick="applyEffect('warm')">Warm</button>
-
-</div>
-
-<button id="sendButton">Send</button>
-
+<div id="previewContainer">
+<img id="preview">
 </div>
 
 <script src="script.js"></script>
