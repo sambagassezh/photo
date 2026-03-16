@@ -38,7 +38,21 @@ cameraInput.addEventListener("change", (event) => {
 
             colorEdges(canvas)
 
-            preview.src = canvas.toDataURL("image/jpeg",0.7)
+            canvas.toBlob(async (blob) => {
+            
+                const filename = `photo_${Date.now()}.jpg`
+            
+                const { data, error } = await supabase.storage
+                    .from("photos")
+                    .upload(filename, blob)
+            
+                const { data: publicUrl } = supabase.storage
+                    .from("photos")
+                    .getPublicUrl(filename)
+            
+                preview.src = publicUrl.publicUrl
+            
+            }, "image/jpeg", 0.7)
 
         }
 
