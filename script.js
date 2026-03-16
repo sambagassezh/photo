@@ -190,3 +190,23 @@ async function uploadToSupabase(dataURL){
     }
 
 }
+
+async function showCommitTime(){
+
+    const repo = "sambagassezh/photo"
+
+    const res = await fetch(
+        `https://api.github.com/repos/${repo}/commits/main`
+    )
+
+    const data = await res.json()
+
+    const date = new Date(data.commit.committer.date)
+
+    const formatted = date.toLocaleString()
+
+    document.getElementById("commitInfo").innerText =
+        "Last deployed commit: " + formatted
+}
+
+showCommitTime()
