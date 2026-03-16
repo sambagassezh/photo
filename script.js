@@ -1,7 +1,14 @@
 const cameraButton = document.getElementById("cameraButton")
 const cameraInput = document.getElementById("cameraInput")
 const preview = document.getElementById("preview")
+const SUPABASE_URL = "https://fixpfxxlnuhwzvbgcykm.supabase.co"
 
+const SUPABASE_KEY = "sb_publishable_9SUF0gKkr4337Ai9i4kCrg_pSaW2sSI"
+
+const supabase = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+)
 const SAMBA_COLORS = [
     [252,15,35],   // red
     [34,34,215],   // blue
@@ -32,6 +39,11 @@ cameraInput.addEventListener("change", (event) => {
             colorEdges(canvas)
 
             preview.src = canvas.toDataURL("image/jpeg",0.7)
+            const dataURL = canvas.toDataURL("image/jpeg",0.7)
+
+            preview.src = dataURL
+            
+            uploadToSupabase(dataURL)
 
         }
 
@@ -149,4 +161,32 @@ function colorEdges(canvas){
     }
 
     ctx.putImageData(imgData,0,0)
+}
+
+async function uploadToSupabase(dataURL){
+
+    try{
+
+        const blob = await (await fetch(dataURL)).blob()
+
+        const filename = "photo_" + Date.now() + ".jpg"
+
+        const { data, error } = await supabase
+            .storage
+            .from("photos")
+            .upload(filename, blob)
+
+        if(error){
+            console.error("Upload error:", error)
+            return
+        }
+
+        console.log("Uploaded:", data)
+
+    }catch(err){
+
+        console.error("Upload failed:", err)
+
+    }
+
 }
