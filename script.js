@@ -1,40 +1,30 @@
+if (!window.fx) {
+    console.error("glfx failed to load")
+}
+
 document.addEventListener("DOMContentLoaded", () => {
 
 console.log("Script loaded")
 
-// ---------------------------------------------------
-// SUPABASE
-// ---------------------------------------------------
-
-if (!window.supabase) {
-    console.error("Supabase library failed to load")
-}
+// ---------------- SUPABASE ----------------
 
 const SUPABASE_URL = "https://fixpfxxlnuhwzvbgcykm.supabase.co"
 const SUPABASE_KEY = "sb_publishable_9SUF0gKkr4337Ai9i4kCrg_pSaW2sSI"
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
 
-console.log("Supabase loaded", supabaseClient)
-
-
-// ---------------------------------------------------
-// ELEMENTS
-// ---------------------------------------------------
+// ---------------- ELEMENTS ----------------
 
 const cameraButton = document.getElementById("cameraButton")
 const cameraInput = document.getElementById("cameraInput")
 const preview = document.getElementById("preview")
-const effectButtons = document.querySelectorAll(".effectBtn")
 const sendButton = document.getElementById("sendButton")
+const filterButtons = document.querySelectorAll(".filter")
 
 let originalCanvas = null
 let currentCanvas = null
 
-
-// ---------------------------------------------------
-// COLORS
-// ---------------------------------------------------
+// ---------------- COLORS ----------------
 
 const SAMBA_COLORS = [
     [252,15,35],
@@ -42,15 +32,11 @@ const SAMBA_COLORS = [
     [252,222,70]
 ]
 
-
-// ---------------------------------------------------
-// CAMERA
-// ---------------------------------------------------
+// ---------------- CAMERA ----------------
 
 cameraButton.addEventListener("click", () => {
     cameraInput.click()
 })
-
 
 cameraInput.addEventListener("change", (event) => {
 
@@ -62,7 +48,6 @@ cameraInput.addEventListener("change", (event) => {
     reader.onload = function(e){
 
         const img = new Image()
-        img.crossOrigin = "anonymous"
 
         img.onload = function(){
 
@@ -80,49 +65,9 @@ cameraInput.addEventListener("change", (event) => {
 
 })
 
+// ---------------- FILTER SYSTEM ----------------
 
-// ---------------------------------------------------
-// EFFECT SYSTEM
-// ---------------------------------------------------
-
-function applyEffect(effect){
-
-    if(!originalCanvas){
-        alert("Take a picture first!")
-        return
-    }
-
-    const canvas = document.createElement("canvas")
-    canvas.width = originalCanvas.width
-    canvas.height = originalCanvas.height
-
-    const ctx = canvas.getContext("2d")
-    ctx.drawImage(originalCanvas,0,0)
-
-    if(effect === "sobel"){
-        sobelEdgeDetect(canvas)
-        colorEdges(canvas)
-    }
-
-    if(effect === "invert"){
-        invertColors(canvas)
-    }
-
-    if(effect === "poster"){
-        posterize(canvas)
-    }
-
-    if(effect === "none"){
-        ctx.drawImage(originalCanvas,0,0)
-    }
-
-    currentCanvas = canvas
-    preview.src = canvas.toDataURL("image/jpeg",0.7)
-
-}
-
-
-effectButtons.forEach(btn => {
+filterButtons.forEach(btn => {
 
     const effect = btn.dataset.effect
 
@@ -131,38 +76,94 @@ effectButtons.forEach(btn => {
 
 })
 
+function applyEffect(effect){
 
-// ---------------------------------------------------
-// UPLOAD
-// ---------------------------------------------------
-
-async function uploadToSupabase(){
-
-    console.log("Preparing upload")
-
-    const blob = await new Promise(resolve => {
-        currentCanvas.toBlob(resolve, "image/jpeg", 0.7)
-    })
-
-    const filename = "photo_" + Date.now() + ".jpg"
-
-    const { data, error } = await supabaseClient
-        .storage
-        .from("photos")
-        .upload(filename, blob, {
-            contentType: "image/jpeg"
-        })
-
-    if(error){
-        console.error("Upload error:", error)
-        alert("Upload failed")
+    if(!originalCanvas){
+        alert("Take a picture first")
         return
     }
 
-    console.log("Upload success:", data)
+    if(effect === "invert" || effect === "poster" || effect === "sobel" || effect === "none"){
+
+        const canvas = document.createElement("canvas")
+        canvas.width = originalCanvas.width
+        canvas.height = originalCanvas.height
+
+        const ctx = canvas.getContext("2d")
+        ctx.drawImage(originalCanvas,0,0)
+
+        if(effect === "invert") invertColors(canvas)
+        if(effect === "poster") posterize(canvas)
+        if(effect === "sobel"){
+            sobelEdgeDetect(canvas)
+            colorEdges(canvas)
+        }
+
+        currentCanvas = canvas
+        preview.src = canvas.toDataURL("image/jpeg",0.7)
+
+        return
+    }
+
+    applyGLFX(effect)
 
 }
 
+// ---------------- GLFX FILTERS ----------------
+
+function applyGLFX(effect){
+
+    const image = new Image()
+    image.src = originalCanvas.toDataURL()
+
+    image.onload = function(){
+
+        const canvasFX = fx.canvas()
+
+        canvasFX.width = originalCanvas.width
+        canvasFX.height = originalCanvas.height
+
+        const texture = canvasFX.texture(image)
+
+        canvasFX.draw(texture)
+
+        if(effect === "sepia"){
+            canvasFX.sepia(0.72)
+        }
+
+        if(effect === "zoom"){
+            canvasFX.zoomBlur(
+                canvasFX.width/2,
+                canvasFX.height/2,
+                0.14
+            )
+        }
+
+        if(effect === "ink"){
+            canvasFX.ink(0.24)
+        }
+
+        if(effect === "dots"){
+            canvasFX.dotScreen(
+                canvasFX.width/2,
+                canvasFX.height/2,
+                1.1,
+                3
+            )
+        }
+
+        canvasFX.update()
+
+        texture.destroy()
+
+        currentCanvas = canvasFX
+
+        preview.src = canvasFX.toDataURL()
+
+    }
+
+}
+// ---------------- UPLOAD ----------------
 
 sendButton.addEventListener("click", async () => {
 
@@ -171,16 +172,28 @@ sendButton.addEventListener("click", async () => {
         return
     }
 
-    await uploadToSupabase()
+    const blob = await new Promise(resolve => {
+        currentCanvas.toBlob(resolve,"image/jpeg",0.7)
+    })
+
+    const filename = "photo_" + Date.now() + ".jpg"
+
+    const { data, error } = await supabaseClient
+        .storage
+        .from("photos")
+        .upload(filename, blob, { contentType:"image/jpeg" })
+
+    if(error){
+        console.error(error)
+        alert("Upload failed")
+        return
+    }
 
     alert("Photo sent to the wall!")
 
 })
 
-
-// ---------------------------------------------------
-// IMAGE PROCESSING
-// ---------------------------------------------------
+// ---------------- IMAGE PROCESSING ----------------
 
 function processImage(img){
 
@@ -207,9 +220,7 @@ function processImage(img){
     ctx.drawImage(img,0,0,w,h)
 
     return canvas
-
 }
-
 
 function invertColors(canvas){
 
@@ -218,17 +229,13 @@ function invertColors(canvas){
     const d = imgData.data
 
     for(let i=0;i<d.length;i+=4){
-
-        d[i]   = 255-d[i]
-        d[i+1] = 255-d[i+1]
-        d[i+2] = 255-d[i+2]
-
+        d[i]=255-d[i]
+        d[i+1]=255-d[i+1]
+        d[i+2]=255-d[i+2]
     }
 
     ctx.putImageData(imgData,0,0)
-
 }
-
 
 function posterize(canvas){
 
@@ -237,17 +244,13 @@ function posterize(canvas){
     const d = imgData.data
 
     for(let i=0;i<d.length;i+=4){
-
-        d[i]   = Math.floor(d[i]/64)*64
-        d[i+1] = Math.floor(d[i+1]/64)*64
-        d[i+2] = Math.floor(d[i+2]/64)*64
-
+        d[i]=Math.floor(d[i]/64)*64
+        d[i+1]=Math.floor(d[i+1]/64)*64
+        d[i+2]=Math.floor(d[i+2]/64)*64
     }
 
     ctx.putImageData(imgData,0,0)
-
 }
-
 
 function sobelEdgeDetect(canvas){
 
@@ -298,9 +301,7 @@ function sobelEdgeDetect(canvas){
     }
 
     ctx.putImageData(imgData,0,0)
-
 }
-
 
 function colorEdges(canvas){
 
@@ -332,7 +333,6 @@ function colorEdges(canvas){
     }
 
     ctx.putImageData(imgData,0,0)
-
 }
 
 })
