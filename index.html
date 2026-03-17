@@ -9,29 +9,9 @@
 <body>
 
 <h1>Welcome to Sambagasse at ZW!!!</h1>
-<button id="cameraButton">
-📸 Take a picture
-</button>
-<div id="lastCommit" aria-live="polite">Last commit time: fetching…</div>
-<script>
-(async () => {
-    const el = document.getElementById('lastCommit');
-    function show(text){ el.textContent = 'Last commit time: ' + text; }
 
-    try {
-        const resp = await fetch(location.href, { cache: 'no-store' });
-        const lm = resp.headers.get('last-modified') || document.lastModified;
-        if (lm) {
-            const d = new Date(lm);
-            show(isNaN(d.getTime()) ? lm : d.toLocaleString());
-        } else {
-            show('unknown');
-        }
-    } catch (err) {
-        show(document.lastModified || 'unknown');
-    }
-})();
-</script>
+<button id="cameraButton">📸 Take a picture</button>
+
 <input 
     type="file" 
     id="cameraInput" 
@@ -43,26 +23,16 @@
 <div id="previewContainer">
     <img id="preview">
 </div>
+
+<!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+
+<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/evanw/glfx.js@master/dist/glfx.js"></script>
+
+
+
+<button id="sendButton">🔥 Send to the wall!</button>
 <script src="script.js"></script>
-
-<div id="filterBar">
-
-<button class="filter" data-effect="none">Clean</button>
-<button class="filter" data-effect="invert">Invert</button>
-<button class="filter" data-effect="poster">Poster</button>
-<button class="filter" data-effect="sobel">Edge</button>
-
-<button class="filter" data-effect="sepia">Sepia</button>
-<button class="filter" data-effect="zoom">Zoom</button>
-<button class="filter" data-effect="ink">Ink</button>
-<button class="filter" data-effect="dots">Dots</button>
-
-</div>
-
-<button id="sendButton">
-🔥 Send to the wall!
-</button>
 </body>
 </html>

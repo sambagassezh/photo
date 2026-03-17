@@ -1,11 +1,3 @@
-if (!window.fx) {
-    console.error("glfx failed to load")
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-
-console.log("Script loaded")
-
 // ---------------- SUPABASE ----------------
 
 const SUPABASE_URL = "https://fixpfxxlnuhwzvbgcykm.supabase.co"
@@ -19,26 +11,22 @@ const cameraButton = document.getElementById("cameraButton")
 const cameraInput = document.getElementById("cameraInput")
 const preview = document.getElementById("preview")
 const sendButton = document.getElementById("sendButton")
-const filterButtons = document.querySelectorAll(".filter")
 
-let originalCanvas = null
 let currentCanvas = null
 
-// ---------------- COLORS ----------------
 
-const SAMBA_COLORS = [
-    [252,15,35],
-    [34,34,215],
-    [252,222,70]
+const ASSETS = [
+    { img: "glasses.png", json: "glasses.json" },
+    { img: "swisshat.png", json: "swisshat.json" },
+    { img: "caipirinha.png", json: "caipirinha.json" }
 ]
-
 // ---------------- CAMERA ----------------
 
 cameraButton.addEventListener("click", () => {
     cameraInput.click()
 })
 
-cameraInput.addEventListener("change", (event) => {
+cameraInput.addEventListener("change", async (event) => {
 
     const file = event.target.files[0]
     if (!file) return
@@ -49,13 +37,18 @@ cameraInput.addEventListener("change", (event) => {
 
         const img = new Image()
 
-        img.onload = function(){
+        img.onload = async function(){
 
-            originalCanvas = processImage(img)
-            currentCanvas = originalCanvas
+            const canvas = processImage(img)
 
-            preview.src = originalCanvas.toDataURL("image/jpeg",0.7)
+            try {
+                await addFaceOverlay(canvas)
+            } catch (e) {
+                console.log("Face overlay failed, continuing")
+            }
 
+            currentCanvas = canvas
+            preview.src = canvas.toDataURL("image/jpeg",0.8)
         }
 
         img.src = e.target.result
@@ -65,135 +58,7 @@ cameraInput.addEventListener("change", (event) => {
 
 })
 
-// ---------------- FILTER SYSTEM ----------------
-
-filterButtons.forEach(btn => {
-
-    const effect = btn.dataset.effect
-
-    btn.addEventListener("click", () => applyEffect(effect))
-    btn.addEventListener("touchstart", () => applyEffect(effect))
-
-})
-
-function applyEffect(effect){
-
-    if(!originalCanvas){
-        alert("Take a picture first")
-        return
-    }
-
-    if(effect === "invert" || effect === "poster" || effect === "sobel" || effect === "none"){
-
-        const canvas = document.createElement("canvas")
-        canvas.width = originalCanvas.width
-        canvas.height = originalCanvas.height
-
-        const ctx = canvas.getContext("2d")
-        ctx.drawImage(originalCanvas,0,0)
-
-        if(effect === "invert") invertColors(canvas)
-        if(effect === "poster") posterize(canvas)
-        if(effect === "sobel"){
-            sobelEdgeDetect(canvas)
-            colorEdges(canvas)
-        }
-
-        currentCanvas = canvas
-        preview.src = canvas.toDataURL("image/jpeg",0.7)
-
-        return
-    }
-
-    applyGLFX(effect)
-
-}
-
-// ---------------- GLFX FILTERS ----------------
-
-function applyGLFX(effect){
-
-    const image = new Image()
-    image.src = originalCanvas.toDataURL()
-
-    image.onload = function(){
-
-        const canvasFX = fx.canvas()
-
-        canvasFX.width = originalCanvas.width
-        canvasFX.height = originalCanvas.height
-
-        const texture = canvasFX.texture(image)
-
-        canvasFX.draw(texture)
-
-        if(effect === "sepia"){
-            canvasFX.sepia(0.72)
-        }
-
-        if(effect === "zoom"){
-            canvasFX.zoomBlur(
-                canvasFX.width/2,
-                canvasFX.height/2,
-                0.14
-            )
-        }
-
-        if(effect === "ink"){
-            canvasFX.ink(0.24)
-        }
-
-        if(effect === "dots"){
-            canvasFX.dotScreen(
-                canvasFX.width/2,
-                canvasFX.height/2,
-                1.1,
-                3
-            )
-        }
-
-        canvasFX.update()
-
-        texture.destroy()
-
-        currentCanvas = canvasFX
-
-        preview.src = canvasFX.toDataURL()
-
-    }
-
-}
-// ---------------- UPLOAD ----------------
-
-sendButton.addEventListener("click", async () => {
-
-    if(!currentCanvas){
-        alert("Take a picture first!")
-        return
-    }
-
-    const blob = await new Promise(resolve => {
-        currentCanvas.toBlob(resolve,"image/jpeg",0.7)
-    })
-
-    const filename = "photo_" + Date.now() + ".jpg"
-
-    const { data, error } = await supabaseClient
-        .storage
-        .from("photos")
-        .upload(filename, blob, { contentType:"image/jpeg" })
-
-    if(error){
-        console.error(error)
-        alert("Upload failed")
-        return
-    }
-
-    alert("Photo sent to the wall!")
-
-})
-
-// ---------------- IMAGE PROCESSING ----------------
+// ---------------- IMAGE PROCESS ----------------
 
 function processImage(img){
 
@@ -206,11 +71,10 @@ function processImage(img){
     let h = img.height
 
     if(w > h && w > MAX_SIZE){
-        h = h * MAX_SIZE / w
+        h *= MAX_SIZE / w
         w = MAX_SIZE
-    }
-    else if(h > MAX_SIZE){
-        w = w * MAX_SIZE / h
+    } else if(h > MAX_SIZE){
+        w *= MAX_SIZE / h
         h = MAX_SIZE
     }
 
@@ -222,117 +86,188 @@ function processImage(img){
     return canvas
 }
 
-function invertColors(canvas){
+// ---------------- FACE OVERLAY ----------------
 
-    const ctx = canvas.getContext("2d")
-    const imgData = ctx.getImageData(0,0,canvas.width,canvas.height)
-    const d = imgData.data
 
-    for(let i=0;i<d.length;i+=4){
-        d[i]=255-d[i]
-        d[i+1]=255-d[i+1]
-        d[i+2]=255-d[i+2]
-    }
 
-    ctx.putImageData(imgData,0,0)
-}
 
-function posterize(canvas){
+async function addFaceOverlay(canvas){
 
-    const ctx = canvas.getContext("2d")
-    const imgData = ctx.getImageData(0,0,canvas.width,canvas.height)
-    const d = imgData.data
+    // load all configs
+    const loadedAssets = []
 
-    for(let i=0;i<d.length;i+=4){
-        d[i]=Math.floor(d[i]/64)*64
-        d[i+1]=Math.floor(d[i+1]/64)*64
-        d[i+2]=Math.floor(d[i+2]/64)*64
-    }
+    for (let asset of ASSETS) {
+        try {
+            const res = await fetch(asset.json)
+            const config = await res.json()
 
-    ctx.putImageData(imgData,0,0)
-}
+            const img = new Image()
+            img.src = asset.img
 
-function sobelEdgeDetect(canvas){
+            await new Promise(resolve => {
+                img.onload = resolve
+            })
 
-    const ctx = canvas.getContext("2d")
-    const imgData = ctx.getImageData(0,0,canvas.width,canvas.height)
-
-    const data = imgData.data
-    const w = canvas.width
-    const h = canvas.height
-
-    const gray = new Float32Array(w*h)
-
-    for(let i=0;i<data.length;i+=4){
-        const r=data[i]
-        const g=data[i+1]
-        const b=data[i+2]
-        gray[i/4]=(r+g+b)/3
-    }
-
-    const output = new Float32Array(w*h)
-
-    for(let y=1;y<h-1;y++){
-        for(let x=1;x<w-1;x++){
-
-            const i = y*w+x
-
-            const gx =
-                -gray[(y-1)*w+(x-1)] -2*gray[y*w+(x-1)] -gray[(y+1)*w+(x-1)]
-                +gray[(y-1)*w+(x+1)] +2*gray[y*w+(x+1)] +gray[(y+1)*w+(x+1)]
-
-            const gy =
-                -gray[(y-1)*w+(x-1)] -2*gray[(y-1)*w+x] -gray[(y-1)*w+(x+1)]
-                +gray[(y+1)*w+(x-1)] +2*gray[(y+1)*w+x] +gray[(y+1)*w+(x+1)]
-
-            output[i]=Math.sqrt(gx*gx+gy*gy)
-
+            loadedAssets.push({ config, img })
+        } catch (e) {
+            console.log("Failed loading asset:", asset)
         }
     }
 
-    for(let i=0;i<data.length;i+=4){
+    return new Promise((resolve) => {
 
-        const val = output[i/4]
+        const faceMesh = new FaceMesh({
+            locateFile: (file) =>
+                `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        })
 
-        data[i]=val
-        data[i+1]=val
-        data[i+2]=val
+        faceMesh.setOptions({
+            maxNumFaces: 1,
+            refineLandmarks: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        })
 
+        faceMesh.onResults((results) => {
+
+            if (!results.multiFaceLandmarks?.length) {
+                resolve()
+                return
+            }
+
+            const ctx = canvas.getContext("2d")
+            const landmarks = results.multiFaceLandmarks[0]
+
+            const w = canvas.width
+            const h = canvas.height
+
+            const leftEye = landmarks[33]
+            const rightEye = landmarks[263]
+            const nose = landmarks[1]
+            const mouthLeft = landmarks[61]
+            const mouthRight = landmarks[291]
+            const forehead = landmarks[10]
+            const getXY = (p) => [p.x * w, p.y * h]
+
+            for (let asset of loadedAssets) {
+
+                const { config, img } = asset
+                const type = config.type
+
+                let p1, p2
+
+                if (type === "eyes") {
+                    p1 = getXY(leftEye)
+                    p2 = getXY(rightEye)
+                }
+
+                else if (type === "mouth") {
+                    p1 = getXY(mouthLeft)
+                    p2 = getXY(mouthRight)
+                }
+
+                else if (type === "hat") {
+                    // use eyes as base width
+                    p1 = getXY(leftEye)
+                    p2 = getXY(rightEye)
+                }
+
+                else continue
+
+                const [x1, y1] = p1
+                const [x2, y2] = p2
+
+                const dist = Math.hypot(x2 - x1, y2 - y1)
+                const angle = Math.atan2(y2 - y1, x2 - x1)
+
+                const imgW = img.width
+                const imgH = img.height
+
+                const a = config.anchors
+
+                let a1, a2
+
+                if (type === "eyes") {
+                    a1 = a.leftEye
+                    a2 = a.rightEye
+                }
+
+                else if (type === "mouth") {
+                    a1 = a.leftMouth
+                    a2 = a.rightMouth
+                }
+
+                else if (type === "hat") {
+                    a1 = a.hatLeft
+                    a2 = a.hatRight
+                }
+
+                const imgDist = (a2[0] - a1[0]) * imgW
+                const scale = dist / imgDist
+
+                ctx.save()
+
+                // anchor on first point
+                ctx.translate(x1, y1)
+                ctx.rotate(angle)
+
+                let offsetX = -a1[0] * imgW * scale
+                let offsetY = -a1[1] * imgH * scale
+
+                if (type === "hat") {
+
+                    const [fx, fy] = getXY(landmarks[10]) // forehead
+
+                    // shift upward relative to eyes → forehead
+                    const eyeCenterY = (y1 + y2) / 2
+                    const lift = eyeCenterY - fy
+
+                    offsetY -= lift * 1.5
+                }
+
+                ctx.drawImage(
+                    img,
+                    offsetX,
+                    offsetY,
+                    imgW * scale,
+                    imgH * scale
+                )
+
+                ctx.restore()
+            }
+
+            resolve()
+        })
+
+        faceMesh.send({ image: canvas })
+        setTimeout(() => resolve(), 500)
+    })
+}
+// ---------------- UPLOAD ----------------
+
+sendButton.addEventListener("click", async () => {
+
+    if (!currentCanvas) {
+        alert("Take a picture first")
+        return
     }
 
-    ctx.putImageData(imgData,0,0)
-}
+    const blob = await new Promise(resolve =>
+        currentCanvas.toBlob(resolve, "image/jpeg", 0.8)
+    )
 
-function colorEdges(canvas){
+    const fileName = `photo_${Date.now()}.jpg`
 
-    const ctx = canvas.getContext("2d")
-    const imgData = ctx.getImageData(0,0,canvas.width,canvas.height)
+    const { error } = await supabaseClient
+        .storage
+        .from("photos")
+        .upload(fileName, blob)
 
-    const data = imgData.data
-
-    for(let i=0;i<data.length;i+=4){
-
-        const brightness = data[i]
-
-        if(brightness > 80){
-
-            const c = SAMBA_COLORS[Math.floor(Math.random()*SAMBA_COLORS.length)]
-
-            data[i]=c[0]
-            data[i+1]=c[1]
-            data[i+2]=c[2]
-
-        } else {
-
-            data[i]=0
-            data[i+1]=0
-            data[i+2]=0
-
-        }
-
+    if (error) {
+        console.error(error)
+        alert("Upload failed")
+    } else {
+        alert("Uploaded!")
     }
-
-    ctx.putImageData(imgData,0,0)
-}
 
 })
