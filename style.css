@@ -2,8 +2,28 @@ body{
     font-family: sans-serif;
     text-align:center;
     background:#f5ecdc;
-}
 
+    margin: 0;              /* 👈 THIS fixes alignment */
+    min-height: 100vh;      /* 👈 keeps vertical consistency */
+
+    position: relative;
+    z-index: 0;
+}
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    background: url("zurich_background.png") no-repeat center center;
+    background-size: cover;
+
+    opacity: 0.8;
+
+    z-index: -1;
+}
 button{
     font-size:20px;
     padding:15px 25px;
@@ -43,4 +63,35 @@ button{
 
 .filter:active{
     background:#e63946;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.6);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 999;
+}
+
+.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  max-width: 300px;
+}
+
+.modal-buttons button {
+  margin: 10px;
 }

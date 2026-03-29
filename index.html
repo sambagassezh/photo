@@ -24,15 +24,46 @@
     <img id="preview">
 </div>
 
-<!-- MediaPipe -->
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
-
 <!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
+<!-- face-api -->
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 
+<!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
 
 <button id="sendButton">🔥 Send to the wall!</button>
+
+<div>
+  <button onclick="setMode('mode1')">🍹 Drink</button>
+  <button onclick="setMode('mode2')">😎 Party</button>
+  <button onclick="setMode('mode3')">🎩 Fancy</button>
+  <button onclick="setMode('mode4')">🎉 Faixa</button>
+</div>
+
+<div id="consentModal" class="modal hidden">
+  <div class="modal-content">
+
+    <p>
+      By clicking "Yes", you agree that your photo may be stored and used 
+      for promotional purposes (e.g. social media, website). You're photo is being
+      shown on the screen of this event anyway.
+    </p>
+
+    <div class="modal-buttons">
+      <button onclick="handleConsent(true)">✅ Yes</button>
+      <button onclick="handleConsent(false)">❌ No</button>
+    </div>
+
+    <hr>
+
+    <button onclick="downloadImage()">⬇️ Download your photo</button>
+
+  </div>
+</div>
+
 <script src="script.js"></script>
 </body>
 </html>
