@@ -47,6 +47,7 @@ Deno.serve(async (req) => {
     const data = await response.json()
     
     if (!data.responses || !data.responses[0].safeSearchAnnotation) {
+        console.warn('Safety check response missing data:', data)
         return new Response(
             JSON.stringify({ safe: true, message: "No safety data available" }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -63,12 +64,25 @@ Deno.serve(async (req) => {
         unsafeLevels.includes(safety.violence) ||
         unsafeLevels.includes(safety.racy)
 
+    if (isUnsafe) {
+      console.log('Safety check failed:', {
+        adult: safety.adult,
+        violence: safety.violence,
+        racy: safety.racy,
+        medical: safety.medical,
+        spoof: safety.spoof
+      })
+    } else {
+      console.log('Safety check passed')
+    }
+
     return new Response(
       JSON.stringify({ safe: !isUnsafe, result: safety }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     )
 
   } catch (error) {
+    console.error('Safety check internal error:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
