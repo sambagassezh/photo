@@ -24,31 +24,40 @@
     <img id="preview">
 </div>
 
-<!-- Supabase -->
+<!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/evanw/glfx.js@master/dist/glfx.js"></script>
 
-<!-- face-api -->
-<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<div class="controls">
+    <div class="control-group">
+        <h3>AR Modes</h3>
+        <button onclick="setMode('mode1')">🍹 Drink</button>
+        <button onclick="setMode('mode2')">😎 Party</button>
+        <button onclick="setMode('mode3')">🎩 Fancy</button>
+        <button onclick="setMode('mode4')">🎉 Faixa</button>
+    </div>
 
-<!-- MediaPipe -->
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
+    <div class="control-group" id="filterBar">
+        <h3>Image Filters</h3>
+        <button class="filter" data-effect="none">Clean</button>
+        <button class="filter" data-effect="invert">Invert</button>
+        <button class="filter" data-effect="poster">Posterize</button>
+        <button class="filter" data-effect="sobel">Edges</button>
+        <button class="filter" data-effect="sepia">Sepia</button>
+        <button class="filter" data-effect="zoom">Zoom</button>
+        <button class="filter" data-effect="ink">Ink</button>
+        <button class="filter" data-effect="dots">Dots</button>
+    </div>
+</div>
 
 <button id="sendButton">🔥 Send to the wall!</button>
 
-<div>
-  <button onclick="setMode('mode1')">🍹 Drink</button>
-  <button onclick="setMode('mode2')">😎 Party</button>
-  <button onclick="setMode('mode3')">🎩 Fancy</button>
-  <button onclick="setMode('mode4')">🎉 Faixa</button>
-</div>
-
 <div id="consentModal" class="modal hidden">
   <div class="modal-content">
-
     <p>
       By clicking "Yes", you agree that your photo may be stored and used 
-      for promotional purposes (e.g. social media, website). You're photo is being
+      for promotional purposes (e.g. social media, website). Your photo is being
       shown on the screen of this event anyway.
     </p>
 
@@ -58,9 +67,7 @@
     </div>
 
     <hr>
-
     <button onclick="downloadImage()">⬇️ Download your photo</button>
-
   </div>
 </div>
 
