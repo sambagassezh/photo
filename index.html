@@ -8,8 +8,9 @@
 
 <body>
 
-<h1>Welcome to Sambagasse at ZW!!!</h1>
+<h1>Sambagasse 📸</h1>
 
+<!-- CAMERA -->
 <button id="cameraButton">📸 Take a picture</button>
 
 <input 
@@ -20,45 +21,53 @@
     style="display:none"
 />
 
+<!-- PREVIEW -->
 <div id="previewContainer">
     <img id="preview">
 </div>
 
-<!-- Scripts -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/glfx/dist/glfx.js"></script>
-
+<!-- CONTROLS -->
 <div class="controls">
+
+    <!-- BACKGROUNDS -->
     <div class="control-group">
-        <h3>AR Modes</h3>
-        <button onclick="setMode('mode1')">🍹 Drink</button>
-        <button onclick="setMode('mode2')">😎 Party</button>
-        <button onclick="setMode('mode3')">🎩 Fancy</button>
-        <button onclick="setMode('mode4')">🎉 Faixa</button>
+        <h3>Background</h3>
+
+        <button class="bg-btn" data-bg="white" onclick="setBackground('white')">⚪</button>
+        <button class="bg-btn" data-bg="yellow" onclick="setBackground('yellow')">🟡</button>
+        <button class="bg-btn" data-bg="red" onclick="setBackground('red')">🔴</button>
+        <button class="bg-btn" data-bg="blue" onclick="setBackground('blue')">🔵</button>
     </div>
 
+    <!-- FILTERS -->
     <div class="control-group" id="filterBar">
-        <h3>Image Filters</h3>
-        <button class="filter" data-effect="none">Clean</button>
+        <h3>Effects</h3>
+
+        <button class="filter" data-effect="none">🧼 Clean</button>
         <button class="filter" data-effect="invert">Invert</button>
+        <button class="filter" data-effect="zoom">Zoom</button>
+        <button class="filter" data-effect="dots">Dots</button>
+
+        <!-- keep for later if needed -->
+        <!--
         <button class="filter" data-effect="poster">Posterize</button>
         <button class="filter" data-effect="sobel">Edges</button>
         <button class="filter" data-effect="sepia">Sepia</button>
-        <button class="filter" data-effect="zoom">Zoom</button>
         <button class="filter" data-effect="ink">Ink</button>
-        <button class="filter" data-effect="dots">Dots</button>
+        -->
     </div>
+
 </div>
 
+<!-- SEND -->
 <button id="sendButton">🔥 Send to the wall!</button>
 
+<!-- CONSENT MODAL -->
 <div id="consentModal" class="modal hidden">
   <div class="modal-content">
     <p>
       By clicking "Yes", you agree that your photo may be stored and used 
-      for promotional purposes (e.g. social media, website). Your photo is being
-      shown on the screen of this event anyway.
+      for promotional purposes.
     </p>
 
     <div class="modal-buttons">
@@ -71,6 +80,10 @@
   </div>
 </div>
 
+<!-- SCRIPTS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/glfx/dist/glfx.js"></script>
 <script src="script.js"></script>
+
 </body>
 </html>

@@ -13,40 +13,206 @@ document.addEventListener("DOMContentLoaded", () => {
     const SUPABASE_KEY = "sb_publishable_9SUF0gKkr4337Ai9i4kCrg_pSaW2sSI";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+
+    async function applyGLFX(inputCanvas, effect) {
+        if (!window.fx) return inputCanvas;
+
+        return new Promise((resolve) => {
+
+            const canvasFX = fx.canvas();
+            canvasFX.width = inputCanvas.width;
+            canvasFX.height = inputCanvas.height;
+
+            const texture = canvasFX.texture(inputCanvas); // 👈 FIX HERE
+            canvasFX.draw(texture);
+
+            if (effect === "zoom") {
+                canvasFX.zoomBlur(
+                    canvasFX.width / 2,
+                    canvasFX.height / 2,
+                    0.4
+                );
+            }
+            else if (effect === "dots") {
+                canvasFX.dotScreen(
+                    canvasFX.width / 2,
+                    canvasFX.height / 2,
+                    1.5,
+                    6
+                );
+            }
+
+            canvasFX.update();
+            texture.destroy();
+
+            // convert back to normal canvas
+            const output = document.createElement("canvas");
+            output.width = canvasFX.width;
+            output.height = canvasFX.height;
+
+            const ctx = output.getContext("2d");
+            ctx.drawImage(canvasFX, 0, 0);
+
+            resolve(output);
+        });
+    }
     // ---------------- FLAGS ----------------
 
     const ENABLE_SAFETY_CHECK = true;
+
+
+    const BACKGROUND_ICONS = {
+        white: null,
+        yellow: "amarelo.png",
+        red: "vermelho.png",
+        blue: "azul.png"
+    };
+
+    
+    const ICON_CONFIG = {
+        white: null,
+
+        yellow: {
+            src: "amarelo.png",
+            size: 200,
+            x: "right",   // right, center, left OR number
+            y: "top",  // bottom, center, top OR number
+            offsetX: +80,
+            offsetY: -60,
+            rotation: 0
+        },
+
+        red: {
+            src: "vermelho.png",
+            size: 100,
+            x: "right",
+            y: "bottom",
+            offsetX: +20,
+            offsetY: +0,
+            rotation: -0.5 // radians (~ -17°)
+        },
+
+        blue: {
+            src: "azul.png",
+            size: 300,
+            x: "center",
+            y: "top",
+            offsetX: 0,
+            offsetY: +30,
+            rotation: 0.0
+        }
+    };
+
+
+    const ICON_IMAGES = {};
+    async function applyFilter(inputCanvas, effect) {
+        if (effect === "none") return inputCanvas;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = inputCanvas.width;
+        canvas.height = inputCanvas.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(inputCanvas, 0, 0);
+
+        if (effect === "invert") {
+            invertColors(canvas);
+            return canvas;
+        }
+
+        // GLFX filters
+        return await applyGLFX(canvas, effect);
+    }
+    async function preloadIcons() {
+        for (const key in ICON_CONFIG) {
+            const config = ICON_CONFIG[key];
+            if (!config) continue;
+
+            const img = new Image();
+            img.src = config.src;
+            await new Promise(r => img.onload = r);
+
+            ICON_IMAGES[key] = img;
+        }
+    }
 
     // ---------------- STATE ----------------
 
     let originalImageGlobal = null;
     let currentCanvas = null;
-    let faceApiReady = false;
+
+    let CURRENT_FILTER = "none";
+    let CURRENT_BACKGROUND = "white";
+    window.setBackground = (bg) => {
+        CURRENT_BACKGROUND = bg;
+        updatePreview();
+    };
+    // let faceApiReady = false;
     let lastUploadedFileName = null;
     let CURRENT_MODE = "none";
-    let CURRENT_FILTER = "none";
+    // let CURRENT_FILTER = "none";
 
+    // ---------------- BACKGROUNDS ----------------
+
+    const BACKGROUNDS = {
+        white: "#ffffff",
+        yellow: "#f7e733",
+        red: "#ff3b30",
+        blue: "#3478f6"
+    };
+
+    // ---------------- ACTIVE FILTERS ----------------
+
+    const ACTIVE_FILTERS = ["none", "invert", "zoom", "dots"];
+
+
+    // ---------------- DEFAULTS ----------------
+
+    const DEFAULTS = {
+        filter: "none",
+        background: "white"
+    };
+
+    // ---------------- TEXT ----------------
+
+    const TEXT_LINES = [
+        "SAMBAGASSE",
+        "Zürich • 12.04"
+    ];
+
+    // ---------------- TEXT COLORS ----------------
+
+    const TEXT_COLORS = {
+        light: "black",
+        dark: "black"
+    };
+    // const MODES = {
+    //     none: { type: "none" },
+    //     mode1: {
+    //         type: "filters",
+    //         enabled: { eyes: true, mouth: true, hat: true },
+    //         scale: { eyes: 1.0, mouth: 0.7, hat: 2.2 }
+    //     },
+    //     mode2: {
+    //         type: "filters",
+    //         enabled: { eyes: true, mouth: false, hat: false },
+    //         scale: { eyes: 1.1, mouth: 0.6, hat: 2.0 }
+    //     },
+    //     mode3: {
+    //         type: "filters",
+    //         enabled: { eyes: false, mouth: true, hat: true },
+    //         scale: { eyes: 1.0, mouth: 0.7, hat: 2.5 }
+    //     },
+    //     mode4: {
+    //         type: "faixa"
+    //     }
     const MODES = {
         none: { type: "none" },
-        mode1: {
-            type: "filters",
-            enabled: { eyes: true, mouth: true, hat: true },
-            scale: { eyes: 1.0, mouth: 0.7, hat: 2.2 }
-        },
-        mode2: {
-            type: "filters",
-            enabled: { eyes: true, mouth: false, hat: false },
-            scale: { eyes: 1.1, mouth: 0.6, hat: 2.0 }
-        },
-        mode3: {
-            type: "filters",
-            enabled: { eyes: false, mouth: true, hat: true },
-            scale: { eyes: 1.0, mouth: 0.7, hat: 2.5 }
-        },
-        mode4: {
-            type: "faixa"
-        }
-    };
+        mode1: { type: "faixa" },
+        mode2: { type: "faixa" },
+        mode3: { type: "faixa" },
+        mode4: { type: "faixa" }
+        };
+    
 
     const SAMBA_COLORS = [
         [252, 15, 35],
@@ -54,6 +220,21 @@ document.addEventListener("DOMContentLoaded", () => {
         [252, 222, 70]
     ];
 
+
+    async function preloadIcons() {
+        for (const key in BACKGROUND_ICONS) {
+            const path = BACKGROUND_ICONS[key];
+            if (!path) continue;
+
+            const img = new Image();
+            img.src = path;
+            await new Promise(r => img.onload = r);
+
+            ICON_IMAGES[key] = img;
+        }
+    }
+
+    preloadIcons();
     // ---------------- ASSETS ----------------
 
     const ASSETS = [
@@ -64,18 +245,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ---------------- LOAD FACE-API ----------------
 
-    async function loadFaceApi() {
-        console.log("Loading face-api models...");
-        try {
-            await faceapi.nets.tinyFaceDetector.loadFromUri('./models');
-            await faceapi.nets.faceLandmark68Net.loadFromUri('./models');
-            faceApiReady = true;
-            console.log("face-api ready ✅");
-        } catch (err) {
-            console.error("Failed to load face-api models:", err);
-        }
-    }
-    loadFaceApi();
+    // async function loadFaceApi() {
+    //     console.log("Loading face-api models...");
+    //     try {
+    //         await faceapi.nets.tinyFaceDetector.loadFromUri('./models');
+    //         await faceapi.nets.faceLandmark68Net.loadFromUri('./models');
+    //         faceApiReady = true;
+    //         console.log("face-api ready ✅");
+    //     } catch (err) {
+    //         console.error("Failed to load face-api models:", err);
+    //     }
+    // }
+    // loadFaceApi();
 
     // ---------------- ELEMENTS ----------------
 
@@ -113,17 +294,35 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!originalImageGlobal) return;
 
         // 1. Process/Resize image
-        let canvas = processImage(originalImageGlobal);
+        // let canvas = await processImage(originalImageGlobal);
 
-        // 2. Apply AR Overlay if needed
-        if (CURRENT_MODE !== "none") {
-            await addFaceOverlay(canvas, originalImageGlobal);
-        }
+        // // 2. Apply AR Overlay if needed
+        // if (CURRENT_MODE !== "none") {
+        //     // await addFaceOverlay(canvas, originalImageGlobal);
+        //     await addFaceOverlay(canvas);
+        // }
 
-        // 3. Apply Image Filter if needed
+        // // 3. Apply Image Filter if needed
+        // if (CURRENT_FILTER !== "none") {
+        //     canvas = await applyFilter(canvas, CURRENT_FILTER);
+        // }
+
+        // 1. create photo-only canvas
+        let photoCanvas = document.createElement("canvas");
+        let pctx = photoCanvas.getContext("2d");
+
+        photoCanvas.width = originalImageGlobal.width;
+        photoCanvas.height = originalImageGlobal.height;
+
+        pctx.drawImage(originalImageGlobal, 0, 0);
+
+        // 2. apply filter ONLY to photo
         if (CURRENT_FILTER !== "none") {
-            canvas = await applyFilter(canvas, CURRENT_FILTER);
+            photoCanvas = await applyFilter(photoCanvas, CURRENT_FILTER);
         }
+
+        // 3. build final image with frame
+        let canvas = await processImage(photoCanvas);
 
         currentCanvas = canvas;
         preview.src = canvas.toDataURL("image/jpeg", 0.8);
@@ -139,23 +338,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
     filterButtons.forEach(btn => {
         const effect = btn.dataset.effect;
+
         btn.addEventListener("click", () => {
-            CURRENT_FILTER = effect;
-            console.log("Filter set to:", effect);
+
+            if (effect === "none") {
+                // FULL RESET
+                CURRENT_FILTER = "none";
+                CURRENT_MODE = "none";
+                console.log("Reset everything 🧼");
+            } else {
+                CURRENT_FILTER = effect;
+                console.log("Filter set to:", effect);
+            }
+
             updatePreview();
         });
     });
 
     // ---------------- IMAGE PROCESSING ----------------
 
-    function processImage(img) {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
+    async function processImage(img) {
         const MAX_SIZE = 800;
 
         let w = img.width;
         let h = img.height;
 
+        // ---------------- Resize ----------------
         if (w > h && w > MAX_SIZE) {
             h = h * MAX_SIZE / w;
             w = MAX_SIZE;
@@ -164,173 +372,281 @@ document.addEventListener("DOMContentLoaded", () => {
             h = MAX_SIZE;
         }
 
-        canvas.width = w;
-        canvas.height = h;
-        ctx.drawImage(img, 0, 0, w, h);
-        return canvas;
-    }
+        // ---------------- GLOBAL SCALE ----------------
+        const BASE_WIDTH = 300;
+        const SCALE = w / BASE_WIDTH;
 
-    async function applyFilter(inputCanvas, effect) {
-        if (effect === "none") return inputCanvas;
+        // ---------------- Margins ----------------
+        const marginX = w * 0.08;
+        const marginTop = h * 0.08;
+        const marginBottom = h * 0.22;
 
         const canvas = document.createElement("canvas");
-        canvas.width = inputCanvas.width;
-        canvas.height = inputCanvas.height;
         const ctx = canvas.getContext("2d");
-        ctx.drawImage(inputCanvas, 0, 0);
 
-        if (effect === "invert") invertColors(canvas);
-        else if (effect === "poster") posterize(canvas);
-        else if (effect === "sobel") {
-            sobelEdgeDetect(canvas);
-            colorEdges(canvas);
-        } else {
-            // GLFX Filters
-            return await applyGLFX(inputCanvas, effect);
+        canvas.width = w + marginX * 2;
+        canvas.height = h + marginTop + marginBottom;
+
+        const x = marginX;
+        const y = marginTop;
+
+        // ---------------- LOAD TEXTURE ----------------
+        const texture = new Image();
+        texture.src = "Texture1.png";
+        await new Promise(r => texture.onload = r);
+
+        const textureScale = 0.5 * SCALE;
+
+        const tempCanvas = document.createElement("canvas");
+        const tctx = tempCanvas.getContext("2d");
+
+        tempCanvas.width = texture.width * textureScale;
+        tempCanvas.height = texture.height * textureScale;
+
+        tctx.drawImage(texture, 0, 0, tempCanvas.width, tempCanvas.height);
+
+        const pattern = ctx.createPattern(tempCanvas, "repeat");
+
+        // ---------------- BACKGROUND ----------------
+        ctx.fillStyle = BACKGROUNDS[CURRENT_BACKGROUND];
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // ---------------- TEXTURE OVERLAY ----------------
+        ctx.globalAlpha = 0.4 + 0.2 * SCALE;
+        ctx.fillStyle = pattern;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.globalAlpha = 1.0;
+
+        // ---------------- WHITE PHOTO AREA ----------------
+        ctx.fillStyle = "white";
+        ctx.fillRect(x, y, w, h);
+
+        // ---------------- ROUNDED CLIP ----------------
+        const radius = 20 * SCALE;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + w - radius, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+        ctx.lineTo(x + w, y + h - radius);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+        ctx.lineTo(x + radius, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+        ctx.clip();
+
+        // ---------------- DRAW IMAGE ----------------
+        ctx.drawImage(img, x, y, w, h);
+        ctx.restore();
+
+        // ---------------- TEXT ----------------
+        const text1 = "Sambagasse";
+        const text2 = "Zürich • 12.04.2026";
+
+        const centerX = canvas.width / 2;
+        const baseY = canvas.height - marginBottom / 2;
+
+        // auto text color
+        const isLightBg = (CURRENT_BACKGROUND === "white" || CURRENT_BACKGROUND === "yellow");
+        ctx.fillStyle = isLightBg ? "black" : "black";
+
+        ctx.shadowColor = "rgba(0,0,0,0.3)";
+        ctx.shadowBlur = 4 * SCALE;
+
+        ctx.textAlign = "center";
+
+        // line 1
+        ctx.font = `bold ${28 * SCALE}px Arial`;
+        ctx.fillText(text1, centerX, baseY - 10 * SCALE);
+
+        // line 2
+        ctx.font = `${20 * SCALE}px Arial`;
+        ctx.fillText(text2, centerX, baseY + 20 * SCALE);
+
+        // ---------------- ICON IMAGE ----------------
+        const config = ICON_CONFIG[CURRENT_BACKGROUND];
+        const icon = ICON_IMAGES[CURRENT_BACKGROUND];
+
+        if (config && icon) {
+
+            const size = config.size * SCALE;
+
+            let xPos = 0;
+            let yPos = 0;
+
+            if (config.x === "right") xPos = canvas.width - size;
+            else if (config.x === "center") xPos = canvas.width / 2 - size / 2;
+            else if (config.x === "left") xPos = 0;
+            else xPos = config.x;
+
+            if (config.y === "bottom") yPos = canvas.height - size;
+            else if (config.y === "center") yPos = canvas.height / 2 - size / 2;
+            else if (config.y === "top") yPos = 0;
+            else yPos = config.y;
+
+            xPos += (config.offsetX || 0) * SCALE;
+            yPos += (config.offsetY || 0) * SCALE;
+
+            ctx.save();
+
+            ctx.translate(xPos + size / 2, yPos + size / 2);
+            ctx.rotate(config.rotation || 0);
+
+            ctx.drawImage(
+                icon,
+                -size / 2,
+                -size / 2,
+                size,
+                size
+            );
+
+            ctx.restore();
         }
+
         return canvas;
     }
-
-    async function applyGLFX(inputCanvas, effect) {
-        if (!window.fx) return inputCanvas;
-
-        return new Promise((resolve) => {
-            const image = new Image();
-            image.src = inputCanvas.toDataURL();
-            image.onload = function () {
-                const canvasFX = fx.canvas();
-                canvasFX.width = inputCanvas.width;
-                canvasFX.height = inputCanvas.height;
-                const texture = canvasFX.texture(image);
-                canvasFX.draw(texture);
-
-                if (effect === "sepia") canvasFX.sepia(0.72);
-                else if (effect === "zoom") canvasFX.zoomBlur(canvasFX.width / 2, canvasFX.height / 2, 0.14);
-                else if (effect === "ink") canvasFX.ink(0.24);
-                else if (effect === "dots") canvasFX.dotScreen(canvasFX.width / 2, canvasFX.height / 2, 1.1, 3);
-
-                canvasFX.update();
-                texture.destroy();
-                resolve(canvasFX);
-            };
-        });
-    }
-
     // ---------------- FACE OVERLAY ----------------
 
-    async function addFaceOverlay(canvas, originalImage) {
-        if (!faceApiReady) return;
+    // async function addFaceOverlay(canvas, originalImage) {
+    //     if (!faceApiReady) return;
 
+    //     const ctx = canvas.getContext("2d");
+    //     const w = canvas.width;
+    //     const h = canvas.height;
+    //     const scaleX = w / originalImage.width;
+    //     const scaleY = h / originalImage.height;
+
+    //     const mode = MODES[CURRENT_MODE];
+    //     const detections = await faceapi
+    //         .detectAllFaces(originalImage, new faceapi.TinyFaceDetectorOptions())
+    //         .withFaceLandmarks();
+
+    //     if (!detections.length) return;
+
+    //     if (mode.type === "faixa") {
+    //         const faixa = new Image();
+    //         faixa.src = "faixa_cropped.png";
+    //         await new Promise(r => faixa.onload = r);
+
+    //         const FRAME_RATIO = 0.05;
+    //         const frameHeight = h * FRAME_RATIO;
+    //         const margin = Math.max(8, frameHeight * 0.08);
+
+    //         let placeTop = false;
+    //         for (const det of detections) {
+    //             const box = det.detection.box;
+    //             if ((box.y * scaleY + box.height * scaleY) > (h - frameHeight)) {
+    //                 placeTop = true;
+    //                 break;
+    //             }
+    //         }
+
+    //         const targetHeight = Math.max(40, frameHeight - margin * 2);
+    //         const scale = targetHeight / faixa.height;
+    //         const fw = faixa.width * scale * 7;
+    //         const fh = targetHeight * 7;
+    //         const x = (w - fw) / 2;
+    //         const y = placeTop ? margin : (h - fh - margin);
+
+    //         ctx.drawImage(faixa, x, y, fw, fh);
+    //         return;
+    //     }
+
+    //     // Load and apply assets
+    //     const loadedAssets = [];
+    //     for (const asset of ASSETS) {
+    //         const res = await fetch(asset.json);
+    //         const config = await res.json();
+    //         const img = new Image();
+    //         img.src = asset.img;
+    //         await new Promise(r => img.onload = r);
+    //         loadedAssets.push({ config, img });
+    //     }
+
+    //     for (const det of detections) {
+    //         const lm = det.landmarks;
+    //         const box = det.detection.box;
+    //         const bx = box.x * scaleX;
+    //         const by = box.y * scaleY;
+
+    //         const leftEye = lm.getLeftEye();
+    //         const rightEye = lm.getRightEye();
+    //         const mouth = lm.getMouth();
+
+    //         const lx = leftEye.reduce((s, p) => s + p.x, 0) / leftEye.length * scaleX;
+    //         const ly = leftEye.reduce((s, p) => s + p.y, 0) / leftEye.length * scaleY;
+    //         const rx = rightEye.reduce((s, p) => s + p.x, 0) / rightEye.length * scaleX;
+    //         const ry = rightEye.reduce((s, p) => s + p.y, 0) / rightEye.length * scaleY;
+
+    //         const baseDist = Math.hypot(rx - lx, ry - ly);
+
+    //         for (const asset of loadedAssets) {
+    //             const { config, img } = asset;
+    //             const type = config.type;
+    //             if (!mode.enabled[type]) continue;
+
+    //             let x1, y1, x2, y2;
+    //             if (type === "eyes") { x1 = lx; y1 = ly; x2 = rx; y2 = ry; }
+    //             else if (type === "mouth") {
+    //                 const mL = mouth[3]; const mR = mouth[9];
+    //                 x1 = mL.x * scaleX; y1 = mL.y * scaleY; x2 = mR.x * scaleX; y2 = mR.y * scaleY;
+    //             } else { x1 = lx; y1 = ly; x2 = rx; y2 = ry; }
+
+    //             const factor = mode.scale[type] || 1.0;
+    //             const dist = baseDist * factor;
+    //             const angle = (type === "mouth") ? 0 : Math.atan2(y2 - y1, x2 - x1);
+
+    //             let a1, a2;
+    //             if (type === "eyes") { a1 = config.anchors.leftEye; a2 = config.anchors.rightEye; }
+    //             else if (type === "mouth") { a1 = config.anchors.leftMouth; a2 = config.anchors.rightMouth; }
+    //             else { a1 = config.anchors.hatLeft; a2 = config.anchors.hatRight; }
+
+    //             const imgDist = (a2[0] - a1[0]) * img.width;
+    //             const scale = dist / imgDist;
+
+    //             ctx.save();
+    //             ctx.translate(x1, y1);
+    //             ctx.rotate(angle);
+    //             let offsetX = -a1[0] * img.width * scale;
+    //             let offsetY = -a1[1] * img.height * scale;
+    //             if (type === "hat") {
+    //                 const eyeCenterY = (y1 + y2) / 2;
+    //                 const forehead = eyeCenterY - by;
+    //                 offsetY -= forehead * 1.8;
+    //             }
+    //             ctx.drawImage(img, offsetX, offsetY, img.width * scale, img.height * scale);
+    //             ctx.restore();
+    //         }
+    //     }
+    // }
+
+
+    async function addFaceOverlay(canvas) {
         const ctx = canvas.getContext("2d");
         const w = canvas.width;
         const h = canvas.height;
-        const scaleX = w / originalImage.width;
-        const scaleY = h / originalImage.height;
 
-        const mode = MODES[CURRENT_MODE];
-        const detections = await faceapi
-            .detectAllFaces(originalImage, new faceapi.TinyFaceDetectorOptions())
-            .withFaceLandmarks();
+        const faixa = new Image();
+        faixa.src = "faixa_cropped.png";
+        await new Promise(r => faixa.onload = r);
 
-        if (!detections.length) return;
+        const FRAME_RATIO = 0.08;
+        const margin = 10;
 
-        if (mode.type === "faixa") {
-            const faixa = new Image();
-            faixa.src = "faixa_cropped.png";
-            await new Promise(r => faixa.onload = r);
+        const targetHeight = h * FRAME_RATIO;
+        const scale = targetHeight / faixa.height;
 
-            const FRAME_RATIO = 0.05;
-            const frameHeight = h * FRAME_RATIO;
-            const margin = Math.max(8, frameHeight * 0.08);
+        const fw = faixa.width * scale;
+        const fh = faixa.height * scale;
 
-            let placeTop = false;
-            for (const det of detections) {
-                const box = det.detection.box;
-                if ((box.y * scaleY + box.height * scaleY) > (h - frameHeight)) {
-                    placeTop = true;
-                    break;
-                }
-            }
+        const x = (w - fw) / 2;
+        const y = h - fh - margin;
 
-            const targetHeight = Math.max(40, frameHeight - margin * 2);
-            const scale = targetHeight / faixa.height;
-            const fw = faixa.width * scale * 7;
-            const fh = targetHeight * 7;
-            const x = (w - fw) / 2;
-            const y = placeTop ? margin : (h - fh - margin);
-
-            ctx.drawImage(faixa, x, y, fw, fh);
-            return;
-        }
-
-        // Load and apply assets
-        const loadedAssets = [];
-        for (const asset of ASSETS) {
-            const res = await fetch(asset.json);
-            const config = await res.json();
-            const img = new Image();
-            img.src = asset.img;
-            await new Promise(r => img.onload = r);
-            loadedAssets.push({ config, img });
-        }
-
-        for (const det of detections) {
-            const lm = det.landmarks;
-            const box = det.detection.box;
-            const bx = box.x * scaleX;
-            const by = box.y * scaleY;
-
-            const leftEye = lm.getLeftEye();
-            const rightEye = lm.getRightEye();
-            const mouth = lm.getMouth();
-
-            const lx = leftEye.reduce((s, p) => s + p.x, 0) / leftEye.length * scaleX;
-            const ly = leftEye.reduce((s, p) => s + p.y, 0) / leftEye.length * scaleY;
-            const rx = rightEye.reduce((s, p) => s + p.x, 0) / rightEye.length * scaleX;
-            const ry = rightEye.reduce((s, p) => s + p.y, 0) / rightEye.length * scaleY;
-
-            const baseDist = Math.hypot(rx - lx, ry - ly);
-
-            for (const asset of loadedAssets) {
-                const { config, img } = asset;
-                const type = config.type;
-                if (!mode.enabled[type]) continue;
-
-                let x1, y1, x2, y2;
-                if (type === "eyes") { x1 = lx; y1 = ly; x2 = rx; y2 = ry; }
-                else if (type === "mouth") {
-                    const mL = mouth[3]; const mR = mouth[9];
-                    x1 = mL.x * scaleX; y1 = mL.y * scaleY; x2 = mR.x * scaleX; y2 = mR.y * scaleY;
-                } else { x1 = lx; y1 = ly; x2 = rx; y2 = ry; }
-
-                const factor = mode.scale[type] || 1.0;
-                const dist = baseDist * factor;
-                const angle = (type === "mouth") ? 0 : Math.atan2(y2 - y1, x2 - x1);
-
-                let a1, a2;
-                if (type === "eyes") { a1 = config.anchors.leftEye; a2 = config.anchors.rightEye; }
-                else if (type === "mouth") { a1 = config.anchors.leftMouth; a2 = config.anchors.rightMouth; }
-                else { a1 = config.anchors.hatLeft; a2 = config.anchors.hatRight; }
-
-                const imgDist = (a2[0] - a1[0]) * img.width;
-                const scale = dist / imgDist;
-
-                ctx.save();
-                ctx.translate(x1, y1);
-                ctx.rotate(angle);
-                let offsetX = -a1[0] * img.width * scale;
-                let offsetY = -a1[1] * img.height * scale;
-                if (type === "hat") {
-                    const eyeCenterY = (y1 + y2) / 2;
-                    const forehead = eyeCenterY - by;
-                    offsetY -= forehead * 1.8;
-                }
-                ctx.drawImage(img, offsetX, offsetY, img.width * scale, img.height * scale);
-                ctx.restore();
-            }
-        }
+        ctx.drawImage(faixa, x, y, fw, fh);
     }
-
     // ---------------- UPLOAD ----------------
 
     sendButton.addEventListener("click", async () => {
