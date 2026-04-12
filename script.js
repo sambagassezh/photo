@@ -278,7 +278,15 @@ document.addEventListener("DOMContentLoaded", () => {
             img.onload = async function () {
                 originalImageGlobal = img;
                 await updatePreview();
-            };
+                document.querySelector(".controls").style.display = "flex";
+                document.getElementById("sendButton").style.display = "inline-block";
+                document.getElementById("sendButton").style.fontSize = "50px";    
+                document.getElementById("sendButton").style.maxWidth = "500px";    
+                document.getElementById("cameraButton").textContent = "📸 Try another one";
+                document.getElementById("cameraButton").style.fontSize = "30px";
+                document.getElementById("cameraButton").style.position = "static";
+                document.getElementById("cameraButton").style.top = "auto";
+                        };
             img.src = e.target.result;
         };
         reader.readAsDataURL(file);

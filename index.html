@@ -1,18 +1,29 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <!-- Defines character encoding (supports emojis, special characters, etc.) -->
     <meta charset="UTF-8">
+
+    <!-- Title shown in the browser tab -->
     <title>Sambagasse Photo</title>
+
+    <!-- Link to external CSS file for styling -->
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<h1>Sambagasse 📸!!!</h1>
+<!-- Main heading (line break included with <br>) -->
+<h1>Welcome to <br> Sambagasse at ZW!!!</h1>
 
-<!-- CAMERA -->
+<!-- ========================= -->
+<!-- CAMERA SECTION -->
+<!-- ========================= -->
+
+<!-- Button that triggers opening the camera -->
 <button id="cameraButton">📸 Take a picture</button>
 
+<!-- Hidden file input used to access the device camera -->
 <input 
     type="file" 
     id="cameraInput" 
@@ -21,34 +32,45 @@
     style="display:none"
 />
 
-<!-- PREVIEW -->
+<!-- ========================= -->
+<!-- IMAGE PREVIEW -->
+<!-- ========================= -->
+
+<!-- Container for displaying the captured image -->
 <div id="previewContainer">
+    <!-- Image element where the photo will be shown -->
     <img id="preview">
 </div>
 
-<!-- CONTROLS -->
+<!-- ========================= -->
+<!-- CONTROL PANEL -->
+<!-- ========================= -->
+
 <div class="controls">
 
-    <!-- BACKGROUNDS -->
+    <!-- -------- BACKGROUND SELECTION -------- -->
     <div class="control-group">
         <h3>Background</h3>
 
-        <button class="bg-btn" data-bg="white" onclick="setBackground('white')">⚪</button>
-        <button class="bg-btn" data-bg="yellow" onclick="setBackground('yellow')">🟡</button>
-        <button class="bg-btn" data-bg="red" onclick="setBackground('red')">🔴</button>
-        <button class="bg-btn" data-bg="blue" onclick="setBackground('blue')">🔵</button>
+        <!-- Each button changes the background color via JavaScript -->
+        <button class="bg-btn" data-bg="white" onclick="setBackground('white')"></button>
+        <button class="bg-btn" data-bg="yellow" onclick="setBackground('yellow')"></button>
+        <button class="bg-btn" data-bg="red" onclick="setBackground('red')"></button>
+        <button class="bg-btn" data-bg="blue" onclick="setBackground('blue')"></button>
     </div>
 
-    <!-- FILTERS -->
+    <!-- -------- FILTER / EFFECTS SECTION -------- -->
     <div class="control-group" id="filterBar">
         <h3>Effects</h3>
 
-        <button class="filter" data-effect="none">🧼 Clean</button>
-        <button class="filter" data-effect="invert">Invert</button>
-        <button class="filter" data-effect="zoom">Zoom</button>
-        <button class="filter" data-effect="dots">Dots</button>
+        <!-- Buttons apply visual effects to the image -->
+        <!-- The "data-effect" attribute is used in JavaScript -->
+        <button class="filter" data-effect="none">∅</button>
+        <button class="filter" data-effect="invert">1</button>
+        <button class="filter" data-effect="zoom">2</button>
+        <button class="filter" data-effect="dots">3</button>
 
-        <!-- keep for later if needed -->
+        <!-- These are currently disabled but kept for future use -->
         <!--
         <button class="filter" data-effect="poster">Posterize</button>
         <button class="filter" data-effect="sobel">Edges</button>
@@ -59,30 +81,52 @@
 
 </div>
 
-<!-- SEND -->
+<!-- ========================= -->
+<!-- SEND BUTTON -->
+<!-- ========================= -->
+
+<!-- Button to upload/send the final image -->
 <button id="sendButton">🔥 Send to the wall!</button>
 
-<!-- CONSENT MODAL -->
+<!-- ========================= -->
+<!-- CONSENT MODAL (POPUP) -->
+<!-- ========================= -->
+
+<!-- Hidden modal that appears before uploading -->
 <div id="consentModal" class="modal hidden">
   <div class="modal-content">
+
+    <!-- User consent text -->
     <p>
       By clicking "Yes", you agree that your photo may be stored and used 
       for promotional purposes.
     </p>
 
+    <!-- Consent buttons -->
     <div class="modal-buttons">
+      <!-- Calls JavaScript function with true/false -->
       <button onclick="handleConsent(true)">✅ Yes</button>
       <button onclick="handleConsent(false)">❌ No</button>
     </div>
 
     <hr>
+
+    <!-- Option to download the image instead of uploading -->
     <button onclick="downloadImage()">⬇️ Download your photo</button>
   </div>
 </div>
 
-<!-- SCRIPTS -->
+<!-- ========================= -->
+<!-- EXTERNAL SCRIPTS -->
+<!-- ========================= -->
+
+<!-- Supabase library (used for backend / uploading / database) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+<!-- glfx.js library (used for image filters/effects like invert, zoom, etc.) -->
 <script src="https://cdn.jsdelivr.net/npm/glfx/dist/glfx.js"></script>
+
+<!-- Your custom JavaScript logic -->
 <script src="script.js"></script>
 
 </body>
