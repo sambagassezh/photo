@@ -27,11 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
             canvasFX.draw(texture);
 
             if (effect === "zoom") {
-                canvasFX.zoomBlur(
-                    canvasFX.width / 2,
-                    canvasFX.height / 2,
-                    0.4
-                );
+                canvasFX.sepia(0.8);
             }
             else if (effect === "dots") {
                 canvasFX.dotScreen(
