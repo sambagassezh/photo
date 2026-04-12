@@ -358,25 +358,68 @@ document.addEventListener("DOMContentLoaded", () => {
     // ---------------- IMAGE PROCESSING ----------------
 
     async function processImage(img) {
+
         const MAX_SIZE = 800;
 
-        let w = img.width;
-        let h = img.height;
+        // ---------------- NORMALIZE INPUT ----------------
+        // (fix GLFX / canvas / image inconsistencies)
+        let sourceCanvas = document.createElement("canvas");
+        let sctx = sourceCanvas.getContext("2d");
 
-        // ---------------- Resize ----------------
-        if (w > h && w > MAX_SIZE) {
-            h = h * MAX_SIZE / w;
-            w = MAX_SIZE;
-        } else if (h > MAX_SIZE) {
-            w = w * MAX_SIZE / h;
-            h = MAX_SIZE;
+        sourceCanvas.width = img.width;
+        sourceCanvas.height = img.height;
+        sctx.drawImage(img, 0, 0);
+
+        let w = sourceCanvas.width;
+        let h = sourceCanvas.height;
+
+        // ---------------- HANDLE LANDSCAPE ----------------
+        const isLandscape = w > h;
+
+        if (isLandscape) {
+            // crop center to make it more portrait-like
+            const targetRatio = 4 / 5; // nice vertical ratio
+
+            let newW = w;
+            let newH = w / targetRatio;
+
+            if (newH > h) {
+                newH = h;
+                newW = h * targetRatio;
+            }
+
+            const cropX = (w - newW) / 2;
+            const cropY = (h - newH) / 2;
+
+            let cropped = document.createElement("canvas");
+            let cctx = cropped.getContext("2d");
+
+            cropped.width = newW;
+            cropped.height = newH;
+
+            cctx.drawImage(
+                sourceCanvas,
+                cropX, cropY, newW, newH,
+                0, 0, newW, newH
+            );
+
+            sourceCanvas = cropped;
+            w = newW;
+            h = newH;
+        }
+
+        // ---------------- RESIZE ----------------
+        if (w > MAX_SIZE || h > MAX_SIZE) {
+            const scaleFactor = Math.min(MAX_SIZE / w, MAX_SIZE / h);
+            w *= scaleFactor;
+            h *= scaleFactor;
         }
 
         // ---------------- GLOBAL SCALE ----------------
         const BASE_WIDTH = 300;
         const SCALE = w / BASE_WIDTH;
 
-        // ---------------- Margins ----------------
+        // ---------------- MARGINS ----------------
         const marginX = w * 0.08;
         const marginTop = h * 0.08;
         const marginBottom = h * 0.22;
@@ -390,32 +433,44 @@ document.addEventListener("DOMContentLoaded", () => {
         const x = marginX;
         const y = marginTop;
 
-        // ---------------- LOAD TEXTURE ----------------
-        const texture = new Image();
-        texture.src = "Texture1.png";
-        await new Promise(r => texture.onload = r);
+        // ---------------- LOAD TEXTURE SAFELY ----------------
+        let pattern = null;
 
-        const textureScale = 0.5 * SCALE;
+        try {
+            const texture = new Image();
+            texture.src = "Texture1.png";
 
-        const tempCanvas = document.createElement("canvas");
-        const tctx = tempCanvas.getContext("2d");
+            await new Promise((resolve, reject) => {
+                texture.onload = resolve;
+                texture.onerror = resolve; // fail safe
+            });
 
-        tempCanvas.width = texture.width * textureScale;
-        tempCanvas.height = texture.height * textureScale;
+            const textureScale = 0.4 * SCALE;
 
-        tctx.drawImage(texture, 0, 0, tempCanvas.width, tempCanvas.height);
+            const tempCanvas = document.createElement("canvas");
+            const tctx = tempCanvas.getContext("2d");
 
-        const pattern = ctx.createPattern(tempCanvas, "repeat");
+            tempCanvas.width = texture.width * textureScale;
+            tempCanvas.height = texture.height * textureScale;
+
+            tctx.drawImage(texture, 0, 0, tempCanvas.width, tempCanvas.height);
+
+            pattern = ctx.createPattern(tempCanvas, "repeat");
+
+        } catch (e) {
+            console.warn("Texture failed");
+        }
 
         // ---------------- BACKGROUND ----------------
         ctx.fillStyle = BACKGROUNDS[CURRENT_BACKGROUND];
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // ---------------- TEXTURE OVERLAY ----------------
-        ctx.globalAlpha = 0.4 + 0.2 * SCALE;
-        ctx.fillStyle = pattern;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.globalAlpha = 1.0;
+        if (pattern) {
+            ctx.globalAlpha = 0.4;
+            ctx.fillStyle = pattern;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 1.0;
+        }
 
         // ---------------- WHITE PHOTO AREA ----------------
         ctx.fillStyle = "white";
@@ -438,35 +493,28 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.closePath();
         ctx.clip();
 
-        // ---------------- DRAW IMAGE ----------------
-        ctx.drawImage(img, x, y, w, h);
+        ctx.drawImage(sourceCanvas, 0, 0, sourceCanvas.width, sourceCanvas.height, x, y, w, h);
+
         ctx.restore();
 
         // ---------------- TEXT ----------------
-        const text1 = "Sambagasse";
-        const text2 = "Zürich • 12.04.2026";
-
         const centerX = canvas.width / 2;
         const baseY = canvas.height - marginBottom / 2;
 
-        // auto text color
-        const isLightBg = (CURRENT_BACKGROUND === "white" || CURRENT_BACKGROUND === "yellow");
-        ctx.fillStyle = isLightBg ? "black" : "black";
+        ctx.fillStyle = (CURRENT_BACKGROUND === "white" || CURRENT_BACKGROUND === "yellow") ? "black" : "white";
 
         ctx.shadowColor = "rgba(0,0,0,0.3)";
         ctx.shadowBlur = 4 * SCALE;
 
         ctx.textAlign = "center";
 
-        // line 1
         ctx.font = `bold ${28 * SCALE}px Arial`;
-        ctx.fillText(text1, centerX, baseY - 10 * SCALE);
+        ctx.fillText("Sambagasse", centerX, baseY - 10 * SCALE);
 
-        // line 2
         ctx.font = `${20 * SCALE}px Arial`;
-        ctx.fillText(text2, centerX, baseY + 20 * SCALE);
+        ctx.fillText("Zürich • 12.04.2026", centerX, baseY + 20 * SCALE);
 
-        // ---------------- ICON IMAGE ----------------
+        // ---------------- ICON ----------------
         const config = ICON_CONFIG[CURRENT_BACKGROUND];
         const icon = ICON_IMAGES[CURRENT_BACKGROUND];
 
@@ -474,35 +522,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const size = config.size * SCALE;
 
-            let xPos = 0;
-            let yPos = 0;
+            let xPos = (config.x === "right") ? canvas.width - size :
+                    (config.x === "center") ? canvas.width / 2 - size / 2 :
+                    (config.x === "left") ? 0 : config.x;
 
-            if (config.x === "right") xPos = canvas.width - size;
-            else if (config.x === "center") xPos = canvas.width / 2 - size / 2;
-            else if (config.x === "left") xPos = 0;
-            else xPos = config.x;
-
-            if (config.y === "bottom") yPos = canvas.height - size;
-            else if (config.y === "center") yPos = canvas.height / 2 - size / 2;
-            else if (config.y === "top") yPos = 0;
-            else yPos = config.y;
+            let yPos = (config.y === "bottom") ? canvas.height - size :
+                    (config.y === "center") ? canvas.height / 2 - size / 2 :
+                    (config.y === "top") ? 0 : config.y;
 
             xPos += (config.offsetX || 0) * SCALE;
             yPos += (config.offsetY || 0) * SCALE;
 
             ctx.save();
-
             ctx.translate(xPos + size / 2, yPos + size / 2);
             ctx.rotate(config.rotation || 0);
-
-            ctx.drawImage(
-                icon,
-                -size / 2,
-                -size / 2,
-                size,
-                size
-            );
-
+            ctx.drawImage(icon, -size / 2, -size / 2, size, size);
             ctx.restore();
         }
 
